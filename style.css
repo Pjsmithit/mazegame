@@ -1,0 +1,318 @@
+/* ===== Design tokens =====
+   Deep indigo-black canvas, electric-indigo maze walls, cyan muncher,
+   amber pellets — a neon-arcade palette built for a dark cabinet, not
+   a generic dashboard. Type is a squared-off monospace stack so score
+   digits and labels read like an LED marquee without needing an
+   external font (keeps everything working offline, first load or not).
+*/
+:root {
+  --bg: #05060a;
+  --bg-panel: #0f1320;
+  --wall: #7b5cff;
+  --wall-fill: #241b4d;
+  --cyan: #4fe9da;
+  --amber: #f2c14e;
+  --coral: #f2545b;
+  --text: #e9ecf7;
+  --text-dim: #8890b5;
+  --font-display: 'Courier New', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  --font-body: 'Courier New', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app {
+  height: 100%;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  position: relative;
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(123, 92, 255, 0.18), transparent 60%),
+    var(--bg);
+}
+
+/* CRT scanline texture — subtle, doesn't fight the maze glow */
+#app::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.025) 0px,
+    rgba(255, 255, 255, 0.025) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  mix-blend-mode: overlay;
+  z-index: 50;
+}
+
+/* ===== HUD ===== */
+#hud {
+  display: flex;
+  justify-content: center;
+  gap: clamp(10px, 4vw, 28px);
+  padding: clamp(8px, 2vh, 14px) 10px;
+  flex-shrink: 0;
+  z-index: 5;
+}
+
+.hud-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 56px;
+}
+
+.hud-label {
+  font-size: clamp(9px, 2.2vw, 11px);
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.hud-value {
+  font-size: clamp(15px, 4vw, 22px);
+  font-weight: 700;
+  color: var(--amber);
+  text-shadow: 0 0 10px rgba(242, 193, 78, 0.55);
+  letter-spacing: 0.04em;
+}
+
+#hud-lives {
+  display: flex;
+  gap: 5px;
+  min-height: 18px;
+  align-items: center;
+}
+
+.life-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 8px rgba(79, 233, 218, 0.85);
+}
+
+/* ===== Canvas area ===== */
+#canvas-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 4px 8px;
+}
+
+#game-canvas {
+  display: block;
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px rgba(123, 92, 255, 0.25), 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+/* ===== Overlays ===== */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 6, 10, 0.86);
+  backdrop-filter: blur(3px);
+  z-index: 20;
+  padding: 16px;
+}
+
+.overlay.hidden { display: none; }
+
+.panel {
+  width: min(360px, 92vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--bg-panel);
+  border: 1px solid rgba(123, 92, 255, 0.35);
+  border-radius: 14px;
+  padding: clamp(18px, 4vw, 28px);
+  text-align: center;
+  box-shadow: 0 0 40px rgba(123, 92, 255, 0.15);
+}
+
+.title {
+  font-size: clamp(28px, 8vw, 38px);
+  letter-spacing: 0.06em;
+  margin: 0 0 6px;
+  color: var(--cyan);
+  text-shadow: 0 0 16px rgba(79, 233, 218, 0.6);
+}
+.title span { color: var(--amber); text-shadow: 0 0 16px rgba(242, 193, 78, 0.6); }
+
+.title-sm {
+  font-size: clamp(20px, 6vw, 26px);
+  color: var(--cyan);
+  text-shadow: 0 0 14px rgba(79, 233, 218, 0.55);
+  margin: 0 0 14px;
+}
+
+.tagline {
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0 0 18px;
+}
+.tagline strong { color: var(--amber); }
+
+.hint {
+  color: var(--text-dim);
+  font-size: 11px;
+  line-height: 1.6;
+  margin-top: 16px;
+}
+
+.btn-primary, .btn-secondary {
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  margin: 4px 0;
+}
+
+.btn-primary {
+  background: var(--cyan);
+  color: #05060a;
+  font-weight: 700;
+  box-shadow: 0 0 18px rgba(79, 233, 218, 0.45);
+}
+.btn-primary:active { transform: translateY(1px); }
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid rgba(136, 144, 181, 0.4);
+}
+
+.btn-row { display: flex; gap: 8px; }
+.btn-row > * { flex: 1; }
+
+#input-name {
+  width: 100%;
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(123, 92, 255, 0.5);
+  background: #05060a;
+  color: var(--amber);
+  margin-bottom: 10px;
+}
+#input-name:focus { outline: 2px solid var(--cyan); outline-offset: 1px; }
+
+.scoreboard { margin: 16px 0; text-align: left; }
+.scoreboard h2 {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin: 0 0 8px;
+  text-align: center;
+}
+
+.score-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.score-list li {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+.score-list li:nth-child(odd) { background: rgba(123, 92, 255, 0.08); }
+.score-list .rank { color: var(--text-dim); }
+.score-list .name { color: var(--text); letter-spacing: 0.06em; }
+.score-list .score { color: var(--amber); text-align: right; font-weight: 700; }
+.score-list .empty { color: var(--text-dim); text-align: center; grid-column: 1 / -1; }
+
+/* ===== Touch controls ===== */
+#touch-controls {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  padding: 6px 0 max(10px, env(safe-area-inset-bottom));
+  z-index: 5;
+}
+
+.dpad {
+  display: grid;
+  grid-template-columns: 56px 56px 56px;
+  grid-template-rows: 56px 56px;
+  gap: 4px;
+}
+
+.dpad-btn {
+  background: rgba(123, 92, 255, 0.14);
+  border: 1px solid rgba(123, 92, 255, 0.4);
+  color: var(--cyan);
+  font-size: 18px;
+  border-radius: 10px;
+  touch-action: none;
+  user-select: none;
+}
+.dpad-btn:active { background: rgba(123, 92, 255, 0.35); }
+
+.dpad-up { grid-column: 2; grid-row: 1; }
+.dpad-left { grid-column: 1; grid-row: 2; }
+.dpad-right { grid-column: 3; grid-row: 2; }
+.dpad-down { grid-column: 2; grid-row: 2; }
+
+/* Hide the on-screen pad on devices that clearly have a keyboard/mouse
+   and enough space; swipe still works on canvas either way. */
+@media (hover: hover) and (pointer: fine) and (min-width: 720px) {
+  #touch-controls { display: none; }
+}
+
+/* ===== Footer ===== */
+#footer {
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  padding: 4px 0 6px;
+  opacity: 0.7;
+}
+
+@media (max-width: 720px) {
+  #footer { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
